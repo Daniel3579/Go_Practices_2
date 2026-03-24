@@ -2,11 +2,15 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"net"
+	"os"
 	"separation/task/db"
-	h "separation/task/handlers"
+	"separation/task/handlers"
 	mid "separation/task/middleware"
+	taskpb "separation/task/proto/gen"
 	"separation/task/utils"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -21,10 +25,25 @@ func main() {
 	}
 	defer db.CloseDB()
 
-	http.Handle("/insert", mid.ValidateMiddleware(http.HandlerFunc(h.InsertHandler)))
-	http.Handle("/selectall", mid.ValidateMiddleware(http.HandlerFunc(h.SelectAllHandler)))
-	http.Handle("/select/", mid.ValidateMiddleware(http.HandlerFunc(h.SelectCurrentHandler)))
-	http.Handle("/update/", mid.ValidateMiddleware(http.HandlerFunc(h.UpdateHandler)))
-	http.Handle("/delete/", mid.ValidateMiddleware(http.HandlerFunc(h.DeleteHandler)))
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	// Создаем новый gRPC сервер
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(mid.ValidateMiddleware))
+
+	// Регистрация сервиса
+	taskpb.RegisterTaskServiceServer(grpcServer, &handlers.Server{})
+
+	// Создаем сетевой слушатель
+	var port string = os.Getenv("TASK_PORT")
+	if port == "" {
+		log.Fatal("PORT environment variable is not set")
+	}
+
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	log.Println("Task gRPC server is running at " + port)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

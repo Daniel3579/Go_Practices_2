@@ -1,106 +1,160 @@
 # Коляда Даниил
-## Практическая работа №1
+## Практическая работа №2
 
 ### Цель работы
 
-Научиться декомпозировать небольшую систему на два сервиса и организовать корректное синхронное взаимодействие по HTTP
+Освоить разработку простого микросервиса на Go с использованием gRPC, включая описание контракта в формате Protocol Buffers, генерацию кода, запуск gRPC-сервера и выполнение клиентских вызовов методов
 
 ---
 
-### Эндпоинты
+## Эндпоинты
 
-Auth Service
+### Auth Service
 
-| Тип | Адрес |
-|-|-|
-| POST | localhost:8080/signup |
-| GET | localhost:8080/login  |
-| DELETE | localhost:8080/delete/{username} |
-| GET | localhost:8080/refreshtoken |
-| GET | localhost:8080/validate |
+| Method | Request | Metadata | Response |
+|-|-|-|-|
+| **SignUp** | `AuthRequest` | | `SignUpResponse` |
+| **Login** | `AuthRequest` | | `LoginResponse` |
+| **Validate** | | `authorization: accesToken` | `ValidateResponse` |
+| **RefreshToken** | | `authorization: refreshToken` | `RefreshResponse` |
+| **Delete** | `DeleteRequest` | `authorization: accesToken` | |
 
 ---
 
-Tasks Service
+#### Requests
 
-| Тип | Адрес |
-|-|-|
-| POST | localhost:8081/insert |
-| GET | localhost:8081/selectall  |
-| GET | localhost:8081/select/{id} |
-| PATCH | localhost:8081/update/{id} |
-| DELETE | localhost:8081/delete/{id} |
+```protobuf
+message AuthRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message DeleteRequest {
+    string username = 1;
+}
+```
+
+---
+
+#### Responses
+
+```protobuf
+message SignUpResponse {
+    string username = 1;
+    string hash = 2;
+}
+
+message ValidateResponse {
+    string username = 1;
+}
+
+message RefreshResponse {
+    string accessToken = 1;
+}
+
+message LoginResponse {
+    string accessToken = 1;
+    string refreshToken = 2;
+}
+```
+
+---
+
+### Tasks Service
+
+| Method | Request | Metadata | Response |
+|-|-|-|-|
+| **Insert** | `InsertRequest` | `authorization_access: accessToken`<br>`authorization_refresh: refreshToken` | `SelectResponse` |
+| **Select** | `IdRequest` | `authorization_access: accessToken`<br>`authorization_refresh: refreshToken` | `SelectResponse` |
+| **SelectAll** | | `authorization_access: accessToken`<br>`authorization_refresh: refreshToken` | `SelectAllResponse` |
+| **Update** | `UpdateRequest` | `authorization_access: accessToken`<br>`authorization_refresh: refreshToken` | `SelectResponse` |
+| **Delete** | `IdRequest` | `authorization_access: accessToken`<br>`authorization_refresh: refreshToken` | |
+
+---
+
+**Requests**
+
+```protobuf
+message InsertRequest {
+    string title = 1;
+    string description = 2;
+    google.protobuf.Timestamp due_date = 3;
+}
+
+message IdRequest {
+    int32 id = 1;
+}
+
+message UpdateRequest {
+    int32 id = 1;
+    optional string title = 2;
+    optional string description = 3;
+    optional google.protobuf.Timestamp due_date = 4;
+    optional bool done = 5;
+}
+```
+
+---
+
+**Responses**
+
+```protobuf
+message SelectResponse {
+    int32 id = 1;
+    string username = 2;
+    string title = 3;
+    string description = 4;
+    google.protobuf.Timestamp due_date = 5;
+    bool done = 6;
+}
+
+message SelectAllResponse {
+    repeated SelectResponse responses = 1;
+}
+```
 
 ---
 
 ### Тесты
 
-Тестирование эндпоинта localhost:8080/signup
+|![Screenshot](./screenshots/Screenshot_1.png)|![Screenshot](./screenshots/Screenshot_2.png)|
+|-|-|
+|![Screenshot](./screenshots/Screenshot_3.png)|![Screenshot](./screenshots/Screenshot_4.png)|
 
-![Screenshot](./screenshots/Screenshot_1.png)
-![Screenshot](./screenshots/Screenshot_2.png)
 
----
-
-Тестирование эндпоинтов
-
-- localhost:8080/login
-- localhost:8080/refreshtoken
-- localhost:8080/validate
-
-![Screenshot](./screenshots/Screenshot_3.png)|![Screenshot](./screenshots/Screenshot_4.png)|![Screenshot](./screenshots/Screenshot_5.png)|
+|![Screenshot](./screenshots/Screenshot_5.png)|![Screenshot](./screenshots/Screenshot_6.png)|![Screenshot](./screenshots/Screenshot_7.png)|
 |-|-|-|
+|![Screenshot](./screenshots/Screenshot_8.png)|![Screenshot](./screenshots/Screenshot_9.png)|![Screenshot](./screenshots/Screenshot_10.png)|
 
 ---
 
-Тестирование эндпоинта localhost:8081/insert
 
-![Screenshot](./screenshots/Screenshot_6.png)
-![Screenshot](./screenshots/Screenshot_7.png)
-
----
-
-Тестирование эндпоинта localhost:8081/selectall
-
-![Screenshot](./screenshots/Screenshot_8.png)
-
----
-
-Тестирование эндпоинта localhost:8081/select/{id}
-
-![Screenshot](./screenshots/Screenshot_9.png)
-
----
-
-Тестирование эндпоинтов
-
-- localhost:8081/update/{id}
-- localhost:8081/delete/{id}
-- localhost:8080/delete/{username}
-
-|![Screenshot](./screenshots/Screenshot_10.png)|![Screenshot](./screenshots/Screenshot_12.png)|![Screenshot](./screenshots/Screenshot_14.png)|
-|-|-|-|
-|![Screenshot](./screenshots/Screenshot_11.png)|![Screenshot](./screenshots/Screenshot_13.png)|![Screenshot](./screenshots/Screenshot_15.png)|
 
 ### Выводы
 
-Декомпозировали систему на два сервиса и организовали корректное синхронное взаимодействие по HTTP
+Освоили разработку простого микросервиса на Go с использованием gRPC, включая описание контракта в формате Protocol Buffers, генерацию кода, запуск gRPC-сервера и выполнение клиентских вызовов методов
 
 ---
 
 ### Дерево проекта
 ```
-2prc_separation_1
 ├── README.md
 ├── auth
 │   ├── cmd
 │   │   └── main.go
 │   ├── db
 │   │   └── db.go
-│   ├── dtos
-│   │   └── dtos.go
 │   ├── handlers
 │   │   └── handlers.go
+│   ├── proto
+│   │   ├── gen
+│   │   │   ├── requests.pb.go
+│   │   │   ├── responses.pb.go
+│   │   │   ├── service.pb.go
+│   │   │   └── service_grpc.pb.go
+│   │   ├── requests.proto
+│   │   ├── responses.proto
+│   │   └── service.proto
 │   └── utils
 │       ├── env.go
 │       ├── password.go
@@ -115,8 +169,7 @@ Tasks Service
     ├── cmd
     │   └── main.go
     ├── db
-    │   ├── db.go
-    │   └── db_test.go
+    │   └── db.go
     ├── dtos
     │   ├── requests.go
     │   └── responses.go
@@ -124,8 +177,17 @@ Tasks Service
     │   └── handlers.go
     ├── middleware
     │   └── middleware.go
+    ├── proto
+    │   ├── gen
+    │   │   ├── task_requests.pb.go
+    │   │   ├── task_responses.pb.go
+    │   │   ├── task_service.pb.go
+    │   │   └── task_service_grpc.pb.go
+    │   ├── task_requests.proto
+    │   ├── task_responses.proto
+    │   └── task_service.proto
     └── utils
         └── utils.go
 
-16 directories, 34 files
+19 directories, 41 files
 ```

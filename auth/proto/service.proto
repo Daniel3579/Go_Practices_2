@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "auth/proto/gen;authpb";
+
+import "google/protobuf/empty.proto";
+import "requests.proto";
+import "responses.proto";
+
+service AuthService {
+    rpc SignUp (AuthRequest) returns (SignUpResponse);
+    rpc Validate (google.protobuf.Empty) returns (ValidateResponse);
+    rpc RefreshToken (google.protobuf.Empty) returns (RefreshResponse);
+    rpc Login (AuthRequest) returns (LoginResponse);
+    rpc Delete (DeleteRequest) returns (google.protobuf.Empty);
+}

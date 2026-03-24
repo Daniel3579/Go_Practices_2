@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package task;
+
+option go_package = "task/proto/gen;taskpb";
+
+import "google/protobuf/timestamp.proto";
+
+message SelectResponse {
+    int32 id = 1;
+    string username = 2;
+    string title = 3;
+    string description = 4;
+    google.protobuf.Timestamp due_date = 5;
+    bool done = 6;
+}
+
+message SelectAllResponse {
+    repeated SelectResponse responses = 1;
+}

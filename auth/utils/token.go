@@ -1,12 +1,28 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"google.golang.org/grpc/metadata"
 )
+
+func GetTokenMetadata(ctx context.Context) (string, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return "", fmt.Errorf("Missing metadata: %v", ok)
+	}
+
+	var tokens []string = md["authorization"]
+	if len(tokens) == 0 {
+		return "", fmt.Errorf("Missing authorization token")
+	}
+
+	return tokens[0], nil
+}
 
 func IsValid(token string, tokenType string) (string, error) {
 	var secretKey []byte = []byte(os.Getenv("SECRET_KEY"))

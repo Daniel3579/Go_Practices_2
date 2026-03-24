@@ -1,76 +1,75 @@
 package auth
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
+	"os"
+	"time"
+
+	auth "separation/auth/proto/gen"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func RequestValidate(accessToken string) (string, error, int) {
-	var username string
-	authorizationURL := "http://localhost:8080/validate"
-	client := &http.Client{}
+func RequestValidate(accessToken string) (string, error, codes.Code) {
+	// Подключаемся к gRPC серверу
+	var address string = os.Getenv("AUTH_SERVER")
+	if address == "" {
+		return "", fmt.Errorf("AUTH_SERVER environment variable is not set"), codes.InvalidArgument
+	}
 
-	// Создание HTTP-запроса для проверки токена
-	authorizeReq, err := http.NewRequest("GET", authorizationURL, nil)
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return "", fmt.Errorf("Ошибка при создании запроса на валидацию токена: %w", err), http.StatusInternalServerError
+		return "", fmt.Errorf("Ошибка подключения к gRPC серверу: %w", err), codes.Internal
 	}
+	defer conn.Close()
 
-	// Добавление токена в заголовок запроса
-	authorizeReq.Header.Set("Authorization", accessToken)
+	client := auth.NewAuthServiceClient(conn)
 
-	// Отправка запроса
-	resp, err := client.Do(authorizeReq)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	md := metadata.Pairs("authorization", accessToken)
+	ctx = metadata.NewOutgoingContext(context.Background(), md)
+
+	// Вызов метода Validate без передачи параметров
+	resp, err := client.Validate(ctx, &emptypb.Empty{})
 	if err != nil {
-		return "", fmt.Errorf("Ошибка при выполнении запроса: %w", err), http.StatusInternalServerError
-	}
-	defer resp.Body.Close()
-
-	// Проверка ответа от сервиса авторизации
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Токен не валиден"), http.StatusUnauthorized
+		return "", err, codes.Unauthenticated
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&username)
-	if err != nil {
-		return "", fmt.Errorf("Ошибка в теле запроса: %w", err), http.StatusBadRequest
-	}
-
-	return username, nil, http.StatusOK
+	return resp.GetUsername(), nil, codes.OK
 }
 
-func RequestRefreshToken(refreshToken string) (string, error, int) {
-	var accessToken string
-	var refreshURL string = "http://localhost:8080/refreshtoken"
-	var client *http.Client = &http.Client{}
+func RequestRefreshToken(refreshToken string) (string, error, codes.Code) {
+	var address string = os.Getenv("AUTH_SERVER")
+	if address == "" {
+		return "", fmt.Errorf("AUTH_SERVER environment variable is not set"), codes.InvalidArgument
+	}
 
-	//Создание HTTP-запроса для обновления токена
-	refreshReq, err := http.NewRequest("GET", refreshURL, nil)
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return "", fmt.Errorf("Ошибка при создании запроса на обновление токена: %w", err), http.StatusInternalServerError
+		return "", fmt.Errorf("Ошибка подключения к gRPC серверу: %w", err), codes.Internal
 	}
+	defer conn.Close()
 
-	//Добавление токена в заголовок запроса
-	refreshReq.Header.Set("Authorization", refreshToken)
+	client := auth.NewAuthServiceClient(conn)
 
-	//Отправка запроса
-	resp, err := client.Do(refreshReq)
+	// Создание метаданных с токеном
+	md := metadata.New(map[string]string{"Authorization": refreshToken})
+
+	// Добавление метаданных к контексту
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	// Вызов метода RefreshToken без передачи параметров
+	resp, err := client.RefreshToken(ctx, &emptypb.Empty{})
 	if err != nil {
-		return "", fmt.Errorf("Ошибка при выполнении запроса: %w", err), http.StatusInternalServerError
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Ошибка: %s, Ответ: %s", http.StatusText(resp.StatusCode), string(bodyBytes)), resp.StatusCode
+		return "", err, codes.Unauthenticated
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&accessToken)
-	if err != nil {
-		return "", fmt.Errorf("Ошибка в теле запроса: %w", err), http.StatusBadRequest
-	}
-
-	return accessToken, nil, http.StatusOK
+	return resp.GetAccessToken(), nil, codes.OK
 }
