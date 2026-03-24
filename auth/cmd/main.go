@@ -2,10 +2,15 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"net"
+	"os"
 	"separation/auth/db"
 	"separation/auth/handlers"
 	"separation/auth/utils"
+
+	authpb "separation/auth/proto/gen"
+
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -20,10 +25,25 @@ func main() {
 	}
 	defer db.CloseDB()
 
-	http.HandleFunc("/signup", handlers.SignUp)
-	http.HandleFunc("/login", handlers.Login)
-	http.HandleFunc("/delete/", handlers.Delete)
-	http.HandleFunc("/refreshtoken", handlers.RefreshToken)
-	http.HandleFunc("/validate", handlers.Validate)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Создаем новый gRPC сервер
+	grpcServer := grpc.NewServer()
+
+	// Регистрация сервиса
+	authpb.RegisterAuthServiceServer(grpcServer, &handlers.Server{})
+
+	// Создаем сетевой слушатель
+	var port string = os.Getenv("AUTH_PORT")
+	if port == "" {
+		log.Fatal("PORT environment variable is not set")
+	}
+
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	log.Println("Auth gRPC server is running at " + port)
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }

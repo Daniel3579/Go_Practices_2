@@ -1,141 +1,130 @@
 package handlers
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
 	"separation/auth/db"
-	"separation/auth/dtos"
+	authpb "separation/auth/proto/gen"
 	"separation/auth/utils"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func SignUp(w http.ResponseWriter, r *http.Request) {
-	var req dtos.SignUpRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	req.Password, err = utils.HashPassword(req.Password)
-
-	err = db.InsertIntoAuth(req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+type Server struct {
+	authpb.UnimplementedAuthServiceServer
 }
 
-func Validate(w http.ResponseWriter, r *http.Request) {
-	var token string = r.Header.Get("Authorization")
+func (s *Server) SignUp(ctx context.Context, req *authpb.AuthRequest) (*authpb.SignUpResponse, error) {
+	if req.GetUsername() == "" || req.GetPassword() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Bad request")
+	}
+
+	hash, err := utils.HashPassword(req.GetPassword())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Произошла ошибка при хэшировании пароля: %v", err)
+	}
+
+	err = db.InsertIntoAuth(
+		&db.InsertRequest{
+			Username: req.GetUsername(),
+			Hash:     hash,
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &authpb.SignUpResponse{
+		Username: req.GetUsername(),
+		Hash:     hash,
+	}, nil
+}
+
+func (s *Server) Validate(ctx context.Context, _ *emptypb.Empty) (*authpb.ValidateResponse, error) {
+	token, err := utils.GetTokenMetadata(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
 
 	username, err := utils.IsValid(token, "access")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(username)
+	return &authpb.ValidateResponse{
+		Username: username,
+	}, nil
 }
 
-func RefreshToken(w http.ResponseWriter, r *http.Request) {
-	refreshToken := r.Header.Get("Authorization")
-	var accessToken string
+func (s *Server) RefreshToken(ctx context.Context, _ *emptypb.Empty) (*authpb.RefreshResponse, error) {
+	refreshToken, err := utils.GetTokenMetadata(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
 
 	username, err := utils.IsValid(refreshToken, "refresh")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	accessToken, err = utils.GenerateToken(username, "access", time.Minute*15)
+	accessToken, err := utils.GenerateToken(username, "access", time.Minute*15)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(accessToken)
+	return &authpb.RefreshResponse{
+		AccessToken: accessToken,
+	}, nil
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
-	var req dtos.SignUpRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
+func (s *Server) Login(ctx context.Context, req *authpb.AuthRequest) (*authpb.LoginResponse, error) {
+	hash, err := db.SelectHash(req.GetUsername())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	hash, err := db.SelectHash(req.Username)
+	err = utils.CheckPassword(hash, req.GetPassword())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	err = utils.CheckPassword(hash, req.Password)
+	refreshToken, err := utils.GenerateToken(req.GetUsername(), "refresh", time.Hour*24*7)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	refreshToken, err := utils.GenerateToken(req.Username, "refresh", time.Hour*24*7)
+	accessToken, err := utils.GenerateToken(req.GetUsername(), "access", time.Minute*15)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	accessToken, err := utils.GenerateToken(req.Username, "access", time.Minute*15)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tokens := struct {
-		RefreshToken string `json:"refreshToken"`
-		AccessToken  string `json:"accessToken"`
-	}{
-		RefreshToken: refreshToken,
+	return &authpb.LoginResponse{
 		AccessToken:  accessToken,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(tokens)
+		RefreshToken: refreshToken,
+	}, nil
 }
 
-func Delete(w http.ResponseWriter, r *http.Request) {
-	var token string = r.Header.Get("Authorization")
-	if token == "" {
-		http.Error(w, "Нет заголовка с JWT", http.StatusUnauthorized)
-		return
+func (s *Server) Delete(ctx context.Context, req *authpb.DeleteRequest) (*emptypb.Empty, error) {
+	token, err := utils.GetTokenMetadata(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	tokenUsername, err := utils.IsValid(token, "access")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	var deleteUsername string = r.URL.Path[len("/delete/"):]
-
-	if tokenUsername != deleteUsername {
-		http.Error(w, "Удалить можно только себя", http.StatusForbidden)
-		return
+	if tokenUsername != req.GetUsername() {
+		return nil, status.Error(codes.PermissionDenied, "Удалить можно только себя")
 	}
 
-	err = db.DeleteFromAuth(deleteUsername)
+	err = db.DeleteFromAuth(req.GetUsername())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }

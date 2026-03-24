@@ -4,12 +4,18 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"separation/auth/dtos"
 
 	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
+
+// ——————————————————————————————————————————————————————————————————————————————
+
+type InsertRequest struct {
+	Username string
+	Hash     string
+}
 
 // ——————————————————————————————————————————————————————————————————————————————
 
@@ -36,8 +42,8 @@ func CloseDB() {
 
 // ——————————————————————————————————————————————————————————————————————————————
 
-func InsertIntoAuth(req dtos.SignUpRequest) error {
-	_, err := db.Exec("INSERT INTO auth (username, hash) VALUES ($1, $2);", req.Username, req.Password)
+func InsertIntoAuth(req *InsertRequest) error {
+	_, err := db.Exec("INSERT INTO auth (username, hash) VALUES ($1, $2);", req.Username, req.Hash)
 	if err != nil {
 		return fmt.Errorf("Не удалось записать в бд: %w", err)
 	}

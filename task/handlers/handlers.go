@@ -1,128 +1,138 @@
 package handlers
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
 	"separation/task/db"
 	"separation/task/dtos"
-	"strconv"
+	taskpb "separation/task/proto/gen"
+	"separation/task/utils"
+	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func InsertHandler(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
-	}
-
-	var req dtos.InsertRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err = db.InsertIntoTask(username, req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+type Server struct {
+	taskpb.UnimplementedTaskServiceServer
 }
 
-func SelectAllHandler(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
+func (s *Server) Insert(ctx context.Context, req *taskpb.InsertRequest) (*taskpb.SelectResponse, error) {
+	username, ok := ctx.Value("username").(string)
 	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Unauthenticated, "username not found in context")
+	}
+
+	if req.GetTitle() == "" || req.GetDescription() == "" {
+		return nil, status.Error(codes.InvalidArgument, "Bad request")
+	}
+
+	res, err := db.InsertIntoTask(username, &dtos.InsertRequest{
+		Title:       req.GetTitle(),
+		Description: req.GetDescription(),
+		Due_date:    req.GetDueDate().AsTime(),
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &taskpb.SelectResponse{
+		Id:          int32(res.Id),
+		Username:    res.Username,
+		Title:       res.Title,
+		Description: res.Description,
+		DueDate:     timestamppb.New(res.Due_date),
+		Done:        res.Done,
+	}, nil
+}
+
+func (s *Server) Select(ctx context.Context, req *taskpb.IdRequest) (*taskpb.SelectResponse, error) {
+	username, ok := ctx.Value("username").(string)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "username not found in context")
+	}
+
+	res, err := db.SelectCurrentTask(username, int(req.GetId()))
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return &taskpb.SelectResponse{
+		Id:          int32(res.Id),
+		Username:    res.Username,
+		Title:       res.Title,
+		Description: res.Description,
+		DueDate:     timestamppb.New(res.Due_date),
+		Done:        res.Done,
+	}, nil
+}
+
+func (s *Server) SelectAll(ctx context.Context, _ *emptypb.Empty) (*taskpb.SelectAllResponse, error) {
+	username, ok := ctx.Value("username").(string)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "username not found in context")
 	}
 
 	res, err := db.SelectAllTasks(username)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(res)
+	selectAllRes, err := utils.SliceResponseToRepeatedResponse(res)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return selectAllRes, nil
 }
 
-func SelectCurrentHandler(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
+func (s *Server) Update(ctx context.Context, req *taskpb.UpdateRequest) (*taskpb.SelectResponse, error) {
+	username, ok := ctx.Value("username").(string)
 	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Unauthenticated, "username not found in context")
 	}
 
-	id, err := strconv.Atoi(r.URL.Path[len("/select/"):])
+	if req.GetId() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "\"Id\" field id required")
+	}
+
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		t := req.GetDueDate().AsTime()
+		dueDate = &t
+	}
+
+	res, err := db.UpdateTask(username, int(req.GetId()), &dtos.UpdateTaskRequest{
+		Title:       req.Title,
+		Description: req.Description,
+		Due_date:    dueDate,
+		Done:        req.Done,
+	})
 	if err != nil {
-		http.Error(w, "Ошибка кастинга id задачи из URL", http.StatusBadRequest)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	res, err := db.SelectCurrentTask(username, id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(res)
+	return &taskpb.SelectResponse{
+		Id:          int32(res.Id),
+		Username:    res.Username,
+		Title:       res.Title,
+		Description: res.Description,
+		DueDate:     timestamppb.New(res.Due_date),
+		Done:        res.Done,
+	}, nil
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
+func (s *Server) Delete(ctx context.Context, req *taskpb.IdRequest) (*emptypb.Empty, error) {
+	username, ok := ctx.Value("username").(string)
 	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
+		return nil, status.Error(codes.Unauthenticated, "username not found in context")
 	}
 
-	id, err := strconv.Atoi(r.URL.Path[len("/update/"):])
+	err := db.DeleteTask(username, int(req.GetId()))
 	if err != nil {
-		http.Error(w, "Ошибка кастинга id задачи из URL", http.StatusBadRequest)
-		return
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var req dtos.UpdateTaskRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err = db.UpdateTask(username, id, req)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-}
-
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	username, ok := r.Context().Value("username").(string)
-	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
-	}
-
-	id, err := strconv.Atoi(r.URL.Path[len("/delete/"):])
-	if err != nil {
-		http.Error(w, "Ошибка кастинга id задачи из URL", http.StatusBadRequest)
-		return
-	}
-
-	err = db.DeleteTask(username, id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNoContent)
+	return nil, nil
 }

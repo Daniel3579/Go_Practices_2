@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "auth/proto/gen;authpb";
+
+message AuthRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message DeleteRequest {
+    string username = 1;
+}
