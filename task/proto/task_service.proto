@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package task;
 
-option go_package = "task/proto/gen;taskpb";
+option go_package = "./gen;taskpb";
 
 import "google/protobuf/empty.proto";
 import "task_requests.proto";

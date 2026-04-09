@@ -1,27 +1,34 @@
 package main
 
 import (
-	"log"
 	"net"
 	"os"
-	"separation/task/db"
-	"separation/task/handlers"
-	mid "separation/task/middleware"
-	taskpb "separation/task/proto/gen"
-	"separation/task/utils"
+	"task/db"
+	"task/handlers"
+	"task/logger"
+	mid "task/middleware"
+	taskpb "task/proto/gen"
+	"task/utils"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
 func main() {
+	// init logger
+	if err := logger.Init(true); err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
+
 	err := utils.LoadEnv()
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal("load env", zap.Error(err))
 	}
 
 	err = db.ConnectDB("DATABASE_URL")
 	if err != nil {
-		log.Fatal(err)
+		logger.Log.Fatal("connect db", zap.Error(err))
 	}
 	defer db.CloseDB()
 
@@ -34,16 +41,16 @@ func main() {
 	// Создаем сетевой слушатель
 	var port string = os.Getenv("TASK_PORT")
 	if port == "" {
-		log.Fatal("PORT environment variable is not set")
+		logger.Log.Fatal("TASK_PORT environment variable is not set")
 	}
 
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Log.Fatal("failed to listen", zap.Error(err))
 	}
 
-	log.Println("Task gRPC server is running at " + port)
+	logger.Log.Info("Task gRPC server is running", zap.String("port", port))
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		logger.Log.Fatal("failed to serve", zap.Error(err))
 	}
 }

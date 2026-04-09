@@ -31,7 +31,7 @@ const file_task_service_proto_rawDesc = "" +
 	"\x06Select\x12\x0f.task.IdRequest\x1a\x14.task.SelectResponse\x12<\n" +
 	"\tSelectAll\x12\x16.google.protobuf.Empty\x1a\x17.task.SelectAllResponse\x123\n" +
 	"\x06Update\x12\x13.task.UpdateRequest\x1a\x14.task.SelectResponse\x121\n" +
-	"\x06Delete\x12\x0f.task.IdRequest\x1a\x16.google.protobuf.EmptyB\x17Z\x15task/proto/gen;taskpbb\x06proto3"
+	"\x06Delete\x12\x0f.task.IdRequest\x1a\x16.google.protobuf.EmptyB\x0eZ\f./gen;taskpbb\x06proto3"
 
 var file_task_service_proto_goTypes = []any{
 	(*InsertRequest)(nil),     // 0: task.InsertRequest
