@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"separation/task/dtos"
+	"task/dtos"
+	"task/logger"
 
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 var db *sql.DB
@@ -15,18 +17,25 @@ var db *sql.DB
 
 func ConnectDB(env string) error {
 	var connStr string = os.Getenv(env)
+	if connStr == "" {
+		logger.Log.Error("database url env is empty", zap.String("env", env))
+		return fmt.Errorf("database connection string is empty")
+	}
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
+		logger.Log.Error("sql.Open failed", zap.Error(err))
 		return fmt.Errorf("Ошибка при открытии базы данных: %w", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
+		logger.Log.Error("db ping failed", zap.Error(err))
 		return fmt.Errorf("Не удалось пингануть бд: %w", err)
 	}
 
+	logger.Log.Info("db connected")
 	return nil
 }
 
@@ -47,9 +56,11 @@ func InsertIntoTask(username string, req *dtos.InsertRequest) (*dtos.SelectRespo
 	).Scan(&res.Id, &res.Username, &res.Title, &res.Description, &res.Due_date, &res.Done)
 
 	if err != nil {
+		logger.Log.Error("insert task failed", zap.Error(err), zap.String("username", username), zap.String("title", req.Title))
 		return nil, fmt.Errorf("Не удалось записать в бд: %w", err)
 	}
 
+	logger.Log.Debug("task inserted", zap.Int("id", res.Id), zap.String("username", username))
 	return res, nil
 }
 

@@ -222,7 +222,7 @@ const file_task_requests_proto_rawDesc = "" +
 	"\x06_titleB\x0e\n" +
 	"\f_descriptionB\v\n" +
 	"\t_due_dateB\a\n" +
-	"\x05_doneB\x17Z\x15task/proto/gen;taskpbb\x06proto3"
+	"\x05_doneB\x0eZ\f./gen;taskpbb\x06proto3"
 
 var (
 	file_task_requests_proto_rawDescOnce sync.Once

@@ -163,7 +163,7 @@ const file_task_responses_proto_rawDesc = "" +
 	"\bdue_date\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\adueDate\x12\x12\n" +
 	"\x04done\x18\x06 \x01(\bR\x04done\"G\n" +
 	"\x11SelectAllResponse\x122\n" +
-	"\tresponses\x18\x01 \x03(\v2\x14.task.SelectResponseR\tresponsesB\x17Z\x15task/proto/gen;taskpbb\x06proto3"
+	"\tresponses\x18\x01 \x03(\v2\x14.task.SelectResponseR\tresponsesB\x0eZ\f./gen;taskpbb\x06proto3"
 
 var (
 	file_task_responses_proto_rawDescOnce sync.Once

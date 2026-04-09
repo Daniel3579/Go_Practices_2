@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"auth/db"
+	authpb "auth/proto/gen"
+	"auth/utils"
 	"context"
-	"separation/auth/db"
-	authpb "separation/auth/proto/gen"
-	"separation/auth/utils"
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -14,43 +15,61 @@ import (
 
 type Server struct {
 	authpb.UnimplementedAuthServiceServer
+	logger *zap.Logger
+}
+
+func NewServer(logger *zap.Logger) *Server {
+	return &Server{
+		logger: logger,
+	}
 }
 
 func (s *Server) SignUp(ctx context.Context, req *authpb.AuthRequest) (*authpb.SignUpResponse, error) {
-	if req.GetUsername() == "" || req.GetPassword() == "" {
-		return nil, status.Error(codes.InvalidArgument, "Bad request")
+	username := req.GetUsername()
+
+	if username == "" || req.GetPassword() == "" {
+		s.logger.Warn("signup attempt with missing credentials", zap.String("username", username))
+		return nil, status.Error(codes.InvalidArgument, "username and password required")
 	}
 
-	hash, err := utils.HashPassword(req.GetPassword())
+	hash, err := utils.HashPassword(req.GetPassword(), s.logger)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Произошла ошибка при хэшировании пароля: %v", err)
+		s.logger.Error("password hashing failed",
+			zap.String("username", username),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "password hashing failed: %v", err)
 	}
 
-	err = db.InsertIntoAuth(
-		&db.InsertRequest{
-			Username: req.GetUsername(),
-			Hash:     hash,
-		},
-	)
+	err = db.InsertIntoAuth(&db.InsertRequest{
+		Username: username,
+		Hash:     hash,
+	}, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Error("signup failed",
+			zap.String("username", username),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "signup failed: %v", err)
 	}
 
 	return &authpb.SignUpResponse{
-		Username: req.GetUsername(),
+		Username: username,
 		Hash:     hash,
 	}, nil
 }
 
 func (s *Server) Validate(ctx context.Context, _ *emptypb.Empty) (*authpb.ValidateResponse, error) {
-	token, err := utils.GetTokenMetadata(ctx)
+	token, err := utils.GetTokenMetadata(ctx, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("token validation failed: missing token", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "missing token")
 	}
 
-	username, err := utils.IsValid(token, "access")
+	username, err := utils.IsValid(token, "access", s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("invalid access token", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
 	return &authpb.ValidateResponse{
@@ -59,47 +78,67 @@ func (s *Server) Validate(ctx context.Context, _ *emptypb.Empty) (*authpb.Valida
 }
 
 func (s *Server) RefreshToken(ctx context.Context, _ *emptypb.Empty) (*authpb.RefreshResponse, error) {
-	refreshToken, err := utils.GetTokenMetadata(ctx)
+	refreshToken, err := utils.GetTokenMetadata(ctx, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("token refresh failed: missing token", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "missing token")
 	}
 
-	username, err := utils.IsValid(refreshToken, "refresh")
+	username, err := utils.IsValid(refreshToken, "refresh", s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("invalid refresh token", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
-	accessToken, err := utils.GenerateToken(username, "access", time.Minute*15)
+	accessToken, err := utils.GenerateToken(username, "access", time.Minute*15, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Error("access token generation failed",
+			zap.String("username", username),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "token generation failed: %v", err)
 	}
 
+	s.logger.Info("access token refreshed", zap.String("username", username))
 	return &authpb.RefreshResponse{
 		AccessToken: accessToken,
 	}, nil
 }
 
 func (s *Server) Login(ctx context.Context, req *authpb.AuthRequest) (*authpb.LoginResponse, error) {
-	hash, err := db.SelectHash(req.GetUsername())
+	username := req.GetUsername()
+
+	hash, err := db.SelectHash(username, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Warn("login attempt for non-existent user", zap.String("username", username))
+		return nil, status.Errorf(codes.Unauthenticated, "invalid credentials")
 	}
 
-	err = utils.CheckPassword(hash, req.GetPassword())
+	err = utils.CheckPassword(hash, req.GetPassword(), s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("invalid password attempt", zap.String("username", username))
+		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
 
-	refreshToken, err := utils.GenerateToken(req.GetUsername(), "refresh", time.Hour*24*7)
+	refreshToken, err := utils.GenerateToken(username, "refresh", time.Hour*24*7, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Error("refresh token generation failed",
+			zap.String("username", username),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "token generation failed: %v", err)
 	}
 
-	accessToken, err := utils.GenerateToken(req.GetUsername(), "access", time.Minute*15)
+	accessToken, err := utils.GenerateToken(username, "access", time.Minute*15, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Error("access token generation failed",
+			zap.String("username", username),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "token generation failed: %v", err)
 	}
 
+	s.logger.Info("user logged in successfully", zap.String("username", username))
 	return &authpb.LoginResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -107,23 +146,35 @@ func (s *Server) Login(ctx context.Context, req *authpb.AuthRequest) (*authpb.Lo
 }
 
 func (s *Server) Delete(ctx context.Context, req *authpb.DeleteRequest) (*emptypb.Empty, error) {
-	token, err := utils.GetTokenMetadata(ctx)
+	token, err := utils.GetTokenMetadata(ctx, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("delete attempt: missing token")
+		return nil, status.Error(codes.Unauthenticated, "missing token")
 	}
 
-	tokenUsername, err := utils.IsValid(token, "access")
+	tokenUsername, err := utils.IsValid(token, "access", s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		s.logger.Warn("delete attempt: invalid token")
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
-	if tokenUsername != req.GetUsername() {
-		return nil, status.Error(codes.PermissionDenied, "Удалить можно только себя")
+	requestedUsername := req.GetUsername()
+
+	if tokenUsername != requestedUsername {
+		s.logger.Warn("delete attempt: permission denied",
+			zap.String("token_username", tokenUsername),
+			zap.String("requested_username", requestedUsername),
+		)
+		return nil, status.Error(codes.PermissionDenied, "can only delete own account")
 	}
 
-	err = db.DeleteFromAuth(req.GetUsername())
+	err = db.DeleteFromAuth(requestedUsername, s.logger)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		s.logger.Error("delete account failed",
+			zap.String("username", requestedUsername),
+			zap.Error(err),
+		)
+		return nil, status.Errorf(codes.Internal, "delete failed: %v", err)
 	}
 
 	return nil, nil

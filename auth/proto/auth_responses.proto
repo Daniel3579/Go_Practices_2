@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "auth/proto/gen;authpb";
+option go_package = "./gen;authpb";
 
 message SignUpResponse {
     string username = 1;

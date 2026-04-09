@@ -3,22 +3,24 @@ package utils
 import (
 	"fmt"
 
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func HashPassword(password string) (string, error) {
+func HashPassword(password string, logger *zap.Logger) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("Возникла проблема в момент хеширования: %w", err)
+		logger.Error("password hashing failed", zap.Error(err))
+		return "", fmt.Errorf("password hashing failed: %w", err)
 	}
 	return string(hash), nil
 }
 
-func CheckPassword(hashedPassword, password string) error {
-	var err error = bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+func CheckPassword(hashedPassword, password string, logger *zap.Logger) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
-		return fmt.Errorf("Ошибка при сверки пароля и хеша: %w", err)
+		logger.Debug("password comparison failed", zap.Error(err))
+		return fmt.Errorf("invalid password")
 	}
-
 	return nil
 }

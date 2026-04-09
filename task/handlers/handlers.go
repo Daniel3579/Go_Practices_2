@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"context"
-	"separation/task/db"
-	"separation/task/dtos"
-	taskpb "separation/task/proto/gen"
-	"separation/task/utils"
+	"task/db"
+	"task/dtos"
+	"task/logger"
+	taskpb "task/proto/gen"
+	"task/utils"
+
 	"time"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -21,10 +24,12 @@ type Server struct {
 func (s *Server) Insert(ctx context.Context, req *taskpb.InsertRequest) (*taskpb.SelectResponse, error) {
 	username, ok := ctx.Value("username").(string)
 	if !ok {
+		logger.Log.Warn("username not found in context")
 		return nil, status.Error(codes.Unauthenticated, "username not found in context")
 	}
 
 	if req.GetTitle() == "" || req.GetDescription() == "" {
+		logger.Log.Warn("bad request", zap.String("username", username))
 		return nil, status.Error(codes.InvalidArgument, "Bad request")
 	}
 
@@ -34,8 +39,11 @@ func (s *Server) Insert(ctx context.Context, req *taskpb.InsertRequest) (*taskpb
 		Due_date:    req.GetDueDate().AsTime(),
 	})
 	if err != nil {
+		logger.Log.Error("insert task db error", zap.Error(err), zap.String("username", username))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	logger.Log.Info("task created", zap.Int32("id", int32(res.Id)), zap.String("username", username))
 
 	return &taskpb.SelectResponse{
 		Id:          int32(res.Id),
