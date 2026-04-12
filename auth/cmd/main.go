@@ -42,9 +42,16 @@ func main() {
 	}()
 	sugar.Info("Database connection established")
 
+	// Start metrics HTTP server
+	metricsPort := os.Getenv("AUTH_METRICS_PORT")
+	if metricsPort == "" {
+		metricsPort = ":9090"
+	}
+	mid.StartMetricsServer(metricsPort, logger)
+
 	// Создаем новый gRPC сервер
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(mid.UnaryLoggingInterceptor(logger)),
+		grpc.UnaryInterceptor(mid.UnaryMetricsInterceptor(logger)),
 	)
 
 	// Регистрация сервиса
