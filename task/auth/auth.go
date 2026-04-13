@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"task/logger"
@@ -12,10 +14,41 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	certFile := os.Getenv("TASK_CERT_FILE")
+	keyFile := os.Getenv("TASK_KEY_FILE")
+	caFile := os.Getenv("CA_CERT_FILE")
+
+	// Загружаем сертификат и ключ клиента (Task сервис)
+	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Загружаем CA сертификат
+	caCert, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, fmt.Errorf("failed to append CA cert")
+	}
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+		ServerName:   "auth-service", // Имя из CN сертификата Auth
+	}
+
+	return credentials.NewTLS(tlsConfig), nil
+}
 
 func RequestValidate(accessToken string) (string, error, codes.Code) {
 	// Подключаемся к gRPC серверу
@@ -25,7 +58,18 @@ func RequestValidate(accessToken string) (string, error, codes.Code) {
 		return "", fmt.Errorf("AUTH_SERVER environment variable is not set"), codes.InvalidArgument
 	}
 
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Загружаем TLS credentials
+	tlsCreds, err := loadTLSCredentials()
+	if err != nil {
+		logger.Log.Error("failed to load TLS credentials", zap.Error(err))
+		return "", fmt.Errorf("Ошибка загрузки TLS credentials: %w", err), codes.Internal
+	}
+
+	// Создаем подключение с TLS
+	conn, err := grpc.NewClient(
+		address,
+		grpc.WithTransportCredentials(tlsCreds),
+	)
 	if err != nil {
 		logger.Log.Error("grpc dial auth server failed", zap.Error(err), zap.String("addr", address))
 		return "", fmt.Errorf("Ошибка подключения к gRPC серверу: %w", err), codes.Internal
@@ -57,7 +101,15 @@ func RequestRefreshToken(refreshToken string) (string, error, codes.Code) {
 		return "", fmt.Errorf("AUTH_SERVER environment variable is not set"), codes.InvalidArgument
 	}
 
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	tlsCreds, err := loadTLSCredentials()
+	if err != nil {
+		return "", fmt.Errorf("Ошибка загрузки TLS credentials: %w", err), codes.Internal
+	}
+
+	conn, err := grpc.NewClient(
+		address,
+		grpc.WithTransportCredentials(tlsCreds),
+	)
 	if err != nil {
 		return "", fmt.Errorf("Ошибка подключения к gRPC серверу: %w", err), codes.Internal
 	}

@@ -14,6 +14,7 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 func main() {
@@ -24,13 +25,19 @@ func main() {
 	}
 	defer logger.Sync()
 
+	// –––––––––––––––––––––––––––––––––––
+
 	sugar := logger.Sugar()
+
+	// ——————————————————————————————————————————————————————————————————————————
 
 	err = utils.LoadEnv()
 	if err != nil {
 		sugar.Fatalw("Failed to load environment variables", "error", err)
 	}
 	sugar.Info("environment variables loaded successfully")
+
+	// ——————————————————————————————————————————————————————————————————————————
 
 	if err = db.ConnectDB(logger); err != nil {
 		sugar.Fatalw("Failed to connect to database", "error", err)
@@ -42,6 +49,8 @@ func main() {
 	}()
 	sugar.Info("Database connection established")
 
+	// ——————————————————————————————————————————————————————————————————————————
+
 	// Start metrics HTTP server
 	metricsPort := os.Getenv("AUTH_METRICS_PORT")
 	if metricsPort == "" {
@@ -49,8 +58,27 @@ func main() {
 	}
 	mid.StartMetricsServer(metricsPort, logger)
 
+	// ——————————————————————————————————————————————————————————————————————————
+
+	certFile := os.Getenv("AUTH_CERT_FILE")
+	if certFile == "" {
+		sugar.Fatal("AUTH_CERT_FILE environment variable is not set")
+	}
+
+	keyFile := os.Getenv("AUTH_KEY_FILE")
+	if keyFile == "" {
+		sugar.Fatal("AUTH_KEY_FILE environment variable is not set")
+	}
+
+	// Загружаем TLS credentials
+	creds, err := credentials.NewServerTLSFromFile(certFile, keyFile)
+	if err != nil {
+		sugar.Fatalf("failed to load TLS credentials: %v", err)
+	}
+
 	// Создаем новый gRPC сервер
 	grpcServer := grpc.NewServer(
+		grpc.Creds(creds),
 		grpc.UnaryInterceptor(mid.UnaryMetricsInterceptor(logger)),
 	)
 
@@ -68,6 +96,8 @@ func main() {
 		sugar.Fatalw("Failed to listen on port", "port", port, "error", err)
 	}
 	sugar.Infow("gRPC server started", "port", port)
+
+	// ——————————————————————————————————————————————————————————————————————————
 
 	// Graceful shutdown
 	go func() {
