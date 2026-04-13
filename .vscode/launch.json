@@ -2,21 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Task",
+            "name": "Debug",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/task/cmd",
-            "cwd": "${workspaceFolder}/task",
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug Auth",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/auth/cmd",
-            "cwd": "${workspaceFolder}/auth",
+            "program": "${workspaceFolder}/cmd",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }
     ]
