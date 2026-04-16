@@ -1,4 +1,4 @@
-module auth-sdk
+module github.com/Daniel3579/Go_Practices_2/auth-sdk
 
 go 1.24.0
 
