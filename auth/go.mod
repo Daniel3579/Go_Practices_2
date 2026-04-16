@@ -2,6 +2,8 @@ module auth
 
 go 1.25.0
 
+// replace auth-sdk => ../auth-sdk
+
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
@@ -23,6 +25,7 @@ require (
 )
 
 require (
+	github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b
 	github.com/prometheus/client_golang v1.23.2
 	go.uber.org/zap v1.27.1
 	golang.org/x/net v0.51.0 // indirect

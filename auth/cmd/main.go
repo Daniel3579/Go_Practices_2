@@ -3,12 +3,13 @@ package main
 import (
 	"auth/db"
 	"auth/handlers"
-	authpb "auth/proto/gen"
 	"auth/utils"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
+
+	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk"
 
 	mid "auth/middleware"
 

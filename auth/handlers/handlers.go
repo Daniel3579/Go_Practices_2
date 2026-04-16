@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"auth/db"
-	authpb "auth/proto/gen"
 	"auth/utils"
 	"context"
 	"time"
+
+	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"

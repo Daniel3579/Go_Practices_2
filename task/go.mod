@@ -2,10 +2,9 @@ module task
 
 go 1.25.0
 
-replace auth => ../auth
+// replace auth-sdk => ../auth-sdk
 
 require (
-	auth v0.0.0-00010101000000-000000000000
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.12.3
 	google.golang.org/grpc v1.80.0
@@ -15,6 +14,7 @@ require (
 require go.uber.org/multierr v1.10.0 // indirect
 
 require (
+	github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b
 	go.uber.org/zap v1.27.1
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect

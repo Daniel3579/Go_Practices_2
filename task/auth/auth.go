@@ -9,7 +9,7 @@ import (
 	"task/logger"
 	"time"
 
-	auth "auth/proto/gen"
+	auth "github.com/Daniel3579/Go_Practices_2/auth-sdk"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
