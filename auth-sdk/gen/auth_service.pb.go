@@ -25,34 +25,34 @@ var File_auth_service_proto protoreflect.FileDescriptor
 
 const file_auth_service_proto_rawDesc = "" +
 	"\n" +
-	"\x12auth_service.proto\x12\x04auth\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13auth_requests.proto\x1a\x14auth_responses.proto2\xa3\x02\n" +
-	"\vAuthService\x121\n" +
-	"\x06SignUp\x12\x11.auth.AuthRequest\x1a\x14.auth.SignUpResponse\x12:\n" +
-	"\bValidate\x12\x16.google.protobuf.Empty\x1a\x16.auth.ValidateResponse\x12=\n" +
-	"\fRefreshToken\x12\x16.google.protobuf.Empty\x1a\x15.auth.RefreshResponse\x12/\n" +
-	"\x05Login\x12\x11.auth.AuthRequest\x1a\x13.auth.LoginResponse\x125\n" +
-	"\x06Delete\x12\x13.auth.DeleteRequest\x1a\x16.google.protobuf.EmptyB\x0eZ\f./gen;authpbb\x06proto3"
+	"\x12auth_service.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13auth_requests.proto\x1a\x14auth_responses.proto2\x80\x02\n" +
+	"\vAuthService\x12'\n" +
+	"\x06SignUp\x12\f.AuthRequest\x1a\x0f.SignUpResponse\x125\n" +
+	"\bValidate\x12\x16.google.protobuf.Empty\x1a\x11.ValidateResponse\x128\n" +
+	"\fRefreshToken\x12\x16.google.protobuf.Empty\x1a\x10.RefreshResponse\x12%\n" +
+	"\x05Login\x12\f.AuthRequest\x1a\x0e.LoginResponse\x120\n" +
+	"\x06Delete\x12\x0e.DeleteRequest\x1a\x16.google.protobuf.EmptyB\x0eZ\f./gen;authpbb\x06proto3"
 
 var file_auth_service_proto_goTypes = []any{
-	(*AuthRequest)(nil),      // 0: auth.AuthRequest
+	(*AuthRequest)(nil),      // 0: AuthRequest
 	(*emptypb.Empty)(nil),    // 1: google.protobuf.Empty
-	(*DeleteRequest)(nil),    // 2: auth.DeleteRequest
-	(*SignUpResponse)(nil),   // 3: auth.SignUpResponse
-	(*ValidateResponse)(nil), // 4: auth.ValidateResponse
-	(*RefreshResponse)(nil),  // 5: auth.RefreshResponse
-	(*LoginResponse)(nil),    // 6: auth.LoginResponse
+	(*DeleteRequest)(nil),    // 2: DeleteRequest
+	(*SignUpResponse)(nil),   // 3: SignUpResponse
+	(*ValidateResponse)(nil), // 4: ValidateResponse
+	(*RefreshResponse)(nil),  // 5: RefreshResponse
+	(*LoginResponse)(nil),    // 6: LoginResponse
 }
 var file_auth_service_proto_depIdxs = []int32{
-	0, // 0: auth.AuthService.SignUp:input_type -> auth.AuthRequest
-	1, // 1: auth.AuthService.Validate:input_type -> google.protobuf.Empty
-	1, // 2: auth.AuthService.RefreshToken:input_type -> google.protobuf.Empty
-	0, // 3: auth.AuthService.Login:input_type -> auth.AuthRequest
-	2, // 4: auth.AuthService.Delete:input_type -> auth.DeleteRequest
-	3, // 5: auth.AuthService.SignUp:output_type -> auth.SignUpResponse
-	4, // 6: auth.AuthService.Validate:output_type -> auth.ValidateResponse
-	5, // 7: auth.AuthService.RefreshToken:output_type -> auth.RefreshResponse
-	6, // 8: auth.AuthService.Login:output_type -> auth.LoginResponse
-	1, // 9: auth.AuthService.Delete:output_type -> google.protobuf.Empty
+	0, // 0: AuthService.SignUp:input_type -> AuthRequest
+	1, // 1: AuthService.Validate:input_type -> google.protobuf.Empty
+	1, // 2: AuthService.RefreshToken:input_type -> google.protobuf.Empty
+	0, // 3: AuthService.Login:input_type -> AuthRequest
+	2, // 4: AuthService.Delete:input_type -> DeleteRequest
+	3, // 5: AuthService.SignUp:output_type -> SignUpResponse
+	4, // 6: AuthService.Validate:output_type -> ValidateResponse
+	5, // 7: AuthService.RefreshToken:output_type -> RefreshResponse
+	6, // 8: AuthService.Login:output_type -> LoginResponse
+	1, // 9: AuthService.Delete:output_type -> google.protobuf.Empty
 	5, // [5:10] is the sub-list for method output_type
 	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option go_package = "./gen;authpb";
+
+message SignUpResponse {
+    string username = 1;
+    string hash = 2;
+}
+
+message ValidateResponse {
+    string username = 1;
+}
+
+message RefreshResponse {
+    string accessToken = 1;
+}
+
+message LoginResponse {
+    string accessToken = 1;
+    string refreshToken = 2;
+}

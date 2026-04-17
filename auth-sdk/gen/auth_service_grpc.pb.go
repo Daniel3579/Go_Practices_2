@@ -20,11 +20,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_SignUp_FullMethodName       = "/auth.AuthService/SignUp"
-	AuthService_Validate_FullMethodName     = "/auth.AuthService/Validate"
-	AuthService_RefreshToken_FullMethodName = "/auth.AuthService/RefreshToken"
-	AuthService_Login_FullMethodName        = "/auth.AuthService/Login"
-	AuthService_Delete_FullMethodName       = "/auth.AuthService/Delete"
+	AuthService_SignUp_FullMethodName       = "/AuthService/SignUp"
+	AuthService_Validate_FullMethodName     = "/AuthService/Validate"
+	AuthService_RefreshToken_FullMethodName = "/AuthService/RefreshToken"
+	AuthService_Login_FullMethodName        = "/AuthService/Login"
+	AuthService_Delete_FullMethodName       = "/AuthService/Delete"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -245,7 +245,7 @@ func _AuthService_Delete_Handler(srv interface{}, ctx context.Context, dec func(
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AuthService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "auth.AuthService",
+	ServiceName: "AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

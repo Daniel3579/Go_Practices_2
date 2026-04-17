@@ -121,7 +121,7 @@ var File_auth_requests_proto protoreflect.FileDescriptor
 
 const file_auth_requests_proto_rawDesc = "" +
 	"\n" +
-	"\x13auth_requests.proto\x12\x04auth\"E\n" +
+	"\x13auth_requests.proto\"E\n" +
 	"\vAuthRequest\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\"+\n" +
@@ -142,8 +142,8 @@ func file_auth_requests_proto_rawDescGZIP() []byte {
 
 var file_auth_requests_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_auth_requests_proto_goTypes = []any{
-	(*AuthRequest)(nil),   // 0: auth.AuthRequest
-	(*DeleteRequest)(nil), // 1: auth.DeleteRequest
+	(*AuthRequest)(nil),   // 0: AuthRequest
+	(*DeleteRequest)(nil), // 1: DeleteRequest
 }
 var file_auth_requests_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
