@@ -4,8 +4,6 @@
 *.log
 *.DS_Store
 *.env
-*/docker-compose.yml
-*.dockerignore
 *.docx
-*.sql
 *.key
+postgres/

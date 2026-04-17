@@ -1,0 +1,45 @@
+services:
+  postgres:
+    build:
+      context: db
+    image: go2/postgres-image
+    container_name: postgres-service
+    ports:
+      - "5433:5432"
+    env_file: ./db/.env
+    volumes:
+      - ./db/data/postgres:/var/lib/postgresql/data:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  auth:
+    build:
+      context: auth
+    image: go2/auth-image
+    container_name: auth-service
+    ports:
+      - "8080:443"
+    volumes:
+      - ./auth/certs:/app/certs:ro
+      - ./auth/.env:/app/.env:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  task:
+    build:
+      context: task
+    image: go2/task-image
+    container_name: task-service
+    ports:
+      - "8082:443"
+    volumes:
+      - ./task/certs:/app/certs:ro
+      - ./task/.env:/app/.env:ro
+    depends_on:
+      postgres:
+        condition: service_healthy

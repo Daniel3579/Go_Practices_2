@@ -1,96 +1,60 @@
 # Коляда Даниил
-## Практическая работа №5
+## Практическая работа №7
 
 ### Цель работы
 
-Освоить базовые практические подходы к защите backend-приложения на Go за счёт включения HTTPS с использованием TLS-сертификата и предотвращения SQL-инъекций при работе с базой данных
+Освоить контейнеризацию backend-приложения на Go с помощью Docker, научиться писать Dockerfile, собирать Docker-образ и запускать контейнеризированный сервис в воспроизводимой среде
 
 ---
 
-### Создание CA сертификата и ключа
-```bash
-# Создаем приватный ключ CA
-openssl genrsa -out certs/ca.key 2048
+### Команды сборки образов и запуска контейнеров
 
-# Создаем самоподписанный CA сертификат
-openssl req -new -x509 -key certs/ca.key -out certs/ca.crt -days 365 \
-  -subj "/CN=MyCA"
+Команда сборки и запуска для сервиса **Task**
+
+```bash
+docker build -t task-image .
+docker run --rm -p 8081:443 -v ./certs:/app/certs:ro -v ./.env:/app/.env:ro task-image
 ```
 
 ---
 
-### Создание сертификатов для Auth сервиса
+Команда сборки и запуска для сервиса **Auth**
+
 ```bash
-# Создаем приватный ключ для Auth
-openssl genrsa -out certs/auth/server.key 2048
-
-# Создаем CSR (Certificate Signing Request)
-openssl req -new -key certs/auth/server.key -out certs/auth/server.csr \
-  -subj "/CN=auth-service"
-
-# Подписываем CA сертификатом
-openssl x509 -req -in certs/auth/server.csr -CA certs/ca.crt -CAkey certs/ca.key \
-  -CAcreateserial -out certs/auth/server.crt -days 365 \
-  -extfile <(printf "subjectAltName=DNS:auth-service,DNS:localhost,IP:127.0.0.1")
-
-# Удаляем CSR
-rm certs/auth/server.csr
-```
-
-![Screenshot](./screenshots/Screenshot_3.png)
-
----
-
-### Создание сертификатов для Task сервиса
-```bash
-# Создаем приватный ключ для Task
-openssl genrsa -out certs/task/server.key 2048
-
-# Создаем CSR
-openssl req -new -key certs/task/server.key -out certs/task/server.csr \
-  -subj "/CN=task-service"
-
-# Подписываем CA сертификатом
-openssl x509 -req -in certs/task/server.csr -CA certs/ca.crt -CAkey certs/ca.key \
-  -CAcreateserial -out certs/task/server.crt -days 365 \
-  -extfile <(printf "subjectAltName=DNS:task-service,DNS:localhost,IP:127.0.0.1")
-
-# Удаляем CSR
-rm certs/task/server.csr
+docker build -t auth-image .
+docker run --rm -p 8080:443 -v ./certs:/app/certs:ro -v ./.env:/app/.env:ro auth-image
 ```
 
 ---
 
-### Тестирование
+Команда сборки и запуска базы данных **Postgres**
 
-Попытка вызова эндпоинта через HTTP
+```bash
+docker build -t postgres-image .
+docker run --rm -p 5433:5432 --env-file ./.env -v ./data/postgres:/var/lib/postgresql/data:rw postgres-image
+```
 
-![Screenshot](./screenshots/Screenshot_2.png)
+---
 
-Вызов эндпоинта через HTTPS
+Команда сборки и запуска для **docker-compose**
+
+```bash
+docker compose -p practice up -d --build
+```
+
+---
+
+### Результаты
 
 ![Screenshot](./screenshots/Screenshot_1.png)
+![Screenshot](./screenshots/Screenshot_2.png)
 
 ---
 
-### Предотвращение SQL-инъекций
-
-Для предотващений SQL-инъекций была использована передача значений через параметризацию
-
-```go
-err := db.QueryRow("INSERT INTO task (username, title, description, due_date) VALUES ($1, $2, $3, $4) RETURNING *;",
-    username,
-    req.Title,
-    req.Description,
-    req.Due_date,
-).Scan(&res.Id, &res.Username, &res.Title, &res.Description, &res.Due_date, &res.Done)
-```
-
----
 
 ### Выводы
 
-Освоили базовые практические подходы к защите backend-приложения на Go за счёт включения HTTPS с использованием TLS-сертификата и предотвращения SQL-инъекций при работе с базой данных
+Освоили контейнеризацию backend-приложения на Go с помощью Docker, научились писать Dockerfile, собирать Docker-образ и запускать контейнеризированный сервис в воспроизводимой среде
 
 ---
 
@@ -98,74 +62,94 @@ err := db.QueryRow("INSERT INTO task (username, title, description, due_date) VA
 ```
 ├── .vscode
 │   └── launch.json
-├── README.md
 ├── auth
-│   ├── .env
 │   ├── certs
 │   │   ├── ca.crt
 │   │   ├── server.crt
-│   │   └── server.key
+│   │   └── server.key.ex
 │   ├── cmd
 │   │   └── main.go
 │   ├── db
 │   │   └── db.go
-│   ├── docker-compose.yml
-│   ├── go.mod
-│   ├── go.sum
 │   ├── handlers
 │   │   └── handlers.go
 │   ├── middleware
 │   │   └── middleware.go
 │   ├── monitoring
 │   │   └── prometheus.yml
+│   ├── utils
+│   │   ├── env.go
+│   │   ├── password.go
+│   │   └── token.go
+│   ├── .dockerignore
+│   ├── .env.ex
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── go.mod
+│   └── go.sum
+├── auth-sdk
+│   ├── gen
+│   │   ├── auth_requests.pb.go
+│   │   ├── auth_responses.pb.go
+│   │   ├── auth_service.pb.go
+│   │   └── auth_service_grpc.pb.go
 │   ├── proto
 │   │   ├── auth_requests.proto
 │   │   ├── auth_responses.proto
-│   │   ├── auth_service.proto
-│   │   └── gen
-│   │       ├── auth_requests.pb.go
-│   │       ├── auth_responses.pb.go
-│   │       ├── auth_service.pb.go
-│   │       └── auth_service_grpc.pb.go
-│   └── utils
-│       ├── env.go
-│       ├── password.go
-│       └── token.go
-├── ca.key
+│   │   └── auth_service.proto
+│   ├── go.mod
+│   └── go.sum
+├── db
+│   ├── data
+│   │   └── ...
+│   ├── .dockerignore
+│   ├── .env.ex
+│   ├── Dockerfile
+│   └── init.sql
 ├── screenshots
 │   └── ...
-└── task
-    ├── .env
-    ├── auth
-    │   └── auth.go
-    ├── certs
-    │   ├── ca.crt
-    │   ├── server.crt
-    │   └── server.key
-    ├── cmd
-    │   └── main.go
-    ├── db
-    │   └── db.go
-    ├── dtos
-    │   ├── requests.go
-    │   └── responses.go
-    ├── go.mod
-    ├── go.sum
-    ├── handlers
-    │   └── handlers.go
-    ├── logger
-    │   └── logger.go
-    ├── middleware
-    │   └── middleware.go
-    ├── proto
-    │   ├── gen
-    │   │   ├── task_requests.pb.go
-    │   │   ├── task_responses.pb.go
-    │   │   ├── task_service.pb.go
-    │   │   └── task_service_grpc.pb.go
-    │   ├── task_requests.proto
-    │   ├── task_responses.proto
-    │   └── task_service.proto
-    └── utils
-        └── utils.go
+├── task
+│   ├── auth
+│   │   └── auth.go
+│   ├── certs
+│   │   ├── ca.crt
+│   │   ├── server.crt
+│   │   └── server.key.ex
+│   ├── cmd
+│   │   └── main.go
+│   ├── db
+│   │   └── db.go
+│   ├── dtos
+│   │   ├── requests.go
+│   │   └── responses.go
+│   ├── handlers
+│   │   └── handlers.go
+│   ├── logger
+│   │   └── logger.go
+│   ├── middleware
+│   │   └── middleware.go
+│   ├── utils
+│   │   └── utils.go
+│   ├── .dockerignore
+│   ├── .env.ex
+│   ├── Dockerfile
+│   ├── go.mod
+│   └── go.sum
+├── task-sdk
+│   ├── gen
+│   │   ├── task_requests.pb.go
+│   │   ├── task_responses.pb.go
+│   │   ├── task_service.pb.go
+│   │   └── task_service_grpc.pb.go
+│   ├── proto
+│   │   ├── task_requests.proto
+│   │   ├── task_responses.proto
+│   │   └── task_service.proto
+│   ├── go.mod
+│   └── go.sum
+├── .gitignore
+├── README.md
+└── docker-compose.yml
+
+29 directories, 62 files
 ```
