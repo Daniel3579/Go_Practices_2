@@ -1,5 +1,7 @@
-github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b h1:t61YnjRGA8MNHddcF2ZB3wFlq2iRASAPHxi37UgBBeI=
-github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416155506-dc32deedbe26 h1:V1YBisIN4GCPPfGM/x4n2qXYlpc0vSaHlcHtiA3JExw=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416155506-dc32deedbe26/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260417140345-6681650ab757 h1:qvOGMTYOyq2ri8BhmRaFAZWjhICkyAUKfF3LuysT/5M=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260417140345-6681650ab757/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=

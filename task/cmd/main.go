@@ -9,8 +9,9 @@ import (
 	"task/handlers"
 	"task/logger"
 	mid "task/middleware"
-	taskpb "task/proto/gen"
 	"task/utils"
+
+	taskpb "github.com/Daniel3579/Go_Practices_2/task-sdk/gen"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"

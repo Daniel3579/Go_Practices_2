@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk"
+	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk/gen"
 
 	mid "auth/middleware"
 

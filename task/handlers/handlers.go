@@ -5,8 +5,9 @@ import (
 	"task/db"
 	"task/dtos"
 	"task/logger"
-	taskpb "task/proto/gen"
 	"task/utils"
+
+	taskpb "github.com/Daniel3579/Go_Practices_2/task-sdk/gen"
 
 	"time"
 

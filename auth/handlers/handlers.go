@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk"
+	authpb "github.com/Daniel3579/Go_Practices_2/auth-sdk/gen"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"

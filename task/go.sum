@@ -1,5 +1,9 @@
-github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b h1:t61YnjRGA8MNHddcF2ZB3wFlq2iRASAPHxi37UgBBeI=
-github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416155506-dc32deedbe26 h1:V1YBisIN4GCPPfGM/x4n2qXYlpc0vSaHlcHtiA3JExw=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416155506-dc32deedbe26/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260417140345-6681650ab757 h1:qvOGMTYOyq2ri8BhmRaFAZWjhICkyAUKfF3LuysT/5M=
+github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260417140345-6681650ab757/go.mod h1:mM/4mJECFFLABlLkbc8pqaQ/2wHnQ64ANmYKMnRfm70=
+github.com/Daniel3579/Go_Practices_2/task-sdk v0.0.0-20260417140345-6681650ab757 h1:owoNo3/9sb/ABqxK81BQWGR523dTHfzYwNWmFR8wH84=
+github.com/Daniel3579/Go_Practices_2/task-sdk v0.0.0-20260417140345-6681650ab757/go.mod h1:2lY8VYm4uLQ88izpttDkgu6+nCO7zrtfYWAZ8leayWA=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

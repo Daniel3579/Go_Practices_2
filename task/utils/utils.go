@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"task/dtos"
 	"task/logger"
-	taskpb "task/proto/gen"
+
+	taskpb "github.com/Daniel3579/Go_Practices_2/task-sdk/gen"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"

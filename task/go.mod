@@ -14,7 +14,8 @@ require (
 require go.uber.org/multierr v1.10.0 // indirect
 
 require (
-	github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260416154437-52dfcf62277b
+	github.com/Daniel3579/Go_Practices_2/auth-sdk v0.0.0-20260417140345-6681650ab757
+	github.com/Daniel3579/Go_Practices_2/task-sdk v0.0.0-20260417140345-6681650ab757
 	go.uber.org/zap v1.27.1
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
