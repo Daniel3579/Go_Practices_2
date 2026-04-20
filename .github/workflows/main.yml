@@ -1,0 +1,38 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: "prc8/ci-cd"
+  pull_request:
+    branches: "main"
+
+jobs:
+  auth-test-and-build:
+    uses: ./.github/workflows/test-and-build.yml
+    with:
+      service-name: auth
+
+  task-test-and-build:
+    uses: ./.github/workflows/test-and-build.yml
+    with:
+      service-name: task
+
+  auth-docker-build:
+    needs: auth-test-and-build
+    uses: ./.github/workflows/build-and-push-docker.yml
+    with:
+      service-name: auth
+    secrets: inherit
+
+  task-docker-build:
+    needs: task-test-and-build
+    uses: ./.github/workflows/build-and-push-docker.yml
+    with:
+      service-name: task
+    secrets: inherit
+
+  db-docker-build:
+    uses: ./.github/workflows/build-and-push-docker.yml
+    with:
+      service-name: postgres
+    secrets: inherit

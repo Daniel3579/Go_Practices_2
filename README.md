@@ -1,65 +1,73 @@
 # Коляда Даниил
-## Практическая работа №7
+## Практическая работа №8
 
 ### Цель работы
 
-Освоить контейнеризацию backend-приложения на Go с помощью Docker, научиться писать Dockerfile, собирать Docker-образ и запускать контейнеризированный сервис в воспроизводимой среде
+Освоить основы CI/CD для backend-проекта на Go, научиться настраивать автоматический pipeline для проверки, сборки, упаковки Docker-образа и подготовки приложения к доставке
 
 ---
 
-### Команды сборки образов и запуска контейнеров
+### Описание
 
-Команда сборки и запуска для сервиса **Task**
+CI – это Continuous Integration, то есть непрерывная интеграция<br>
+Смысл в том, что после каждого изменения кода система автоматически проверяет проект:
+- устанавливает зависомости
+- запускает тесты
+- выполняет сборку
+- проверяет, что код не сломал проект
 
-```bash
-docker build -t task-image .
-docker run --rm -p 8081:443 -v ./certs:/app/certs:ro -v ./.env:/app/.env:ro task-image
-```
-
----
-
-Команда сборки и запуска для сервиса **Auth**
-
-```bash
-docker build -t auth-image .
-docker run --rm -p 8080:443 -v ./certs:/app/certs:ro -v ./.env:/app/.env:ro auth-image
-```
+CD – это Continuous Deployment, то есть непрерывное развертывание<br>
+Отвечает за упаковку и доставку результата – например, публикацию Docker-образа и деплой на сервер
 
 ---
 
-Команда сборки и запуска базы данных **Postgres**
+### Структура pipeline
 
-```bash
-docker build -t postgres-image .
-docker run --rm -p 5433:5432 --env-file ./.env -v ./data/postgres:/var/lib/postgresql/data:rw postgres-image
-```
-
----
-
-Команда сборки и запуска для **docker-compose**
-
-```bash
-docker compose -p practice up -d --build
-```
+- [main.yml](.github/workflows/main.yml)
+    - [test-and-build.yml](.github/workflows/test-and-build.yml)
+    - [build-and-push-docker.yml](.github/workflows/build-and-push-docker.yml)
 
 ---
 
-### Результаты
+### Создали токен
 
 ![Screenshot](./screenshots/Screenshot_1.png)
+![Screenshot](./screenshots/Screenshot_4.png)
+
+---
+
+### Cоздали секрет
+
 ![Screenshot](./screenshots/Screenshot_2.png)
 
 ---
 
+### Успешная сборка
+
+![Screenshot](./screenshots/Screenshot_3.png)
+
+---
+
+### Образы опубликованы в registry
+
+![Screenshot](./screenshots/Screenshot_5.png)
+
+---
 
 ### Выводы
 
-Освоили контейнеризацию backend-приложения на Go с помощью Docker, научились писать Dockerfile, собирать Docker-образ и запускать контейнеризированный сервис в воспроизводимой среде
+Освоили основы CI/CD для backend-проекта на Go, научились настраивать автоматический pipeline для проверки, сборки, упаковки Docker-образа и подготовки приложения к доставке
 
 ---
 
 ### Дерево проекта
+
 ```
+├── .github
+│   └── workflows
+│       ├── build-and-push-docker.yml
+│       ├── main.yml
+│       └── test-and-build.yml
 ├── .vscode
 │   └── launch.json
 ├── auth
@@ -80,7 +88,8 @@ docker compose -p practice up -d --build
 │   ├── utils
 │   │   ├── env.go
 │   │   ├── password.go
-│   │   └── token.go
+│   │   ├── token.go
+│   │   └── utils_test.go
 │   ├── .dockerignore
 │   ├── .env.ex
 │   ├── Dockerfile
@@ -99,7 +108,7 @@ docker compose -p practice up -d --build
 │   │   └── auth_service.proto
 │   ├── go.mod
 │   └── go.sum
-├── db
+├── postgres
 │   ├── data
 │   │   └── ...
 │   ├── .dockerignore
@@ -129,7 +138,8 @@ docker compose -p practice up -d --build
 │   ├── middleware
 │   │   └── middleware.go
 │   ├── utils
-│   │   └── utils.go
+│   │   ├── utils.go
+│   │   └── utils_test.go
 │   ├── .dockerignore
 │   ├── .env.ex
 │   ├── Dockerfile
@@ -151,5 +161,5 @@ docker compose -p practice up -d --build
 ├── README.md
 └── docker-compose.yml
 
-29 directories, 62 files
+31 directories, 70 files
 ```

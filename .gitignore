@@ -6,4 +6,4 @@
 *.env
 *.docx
 *.key
-postgres/
+data/
