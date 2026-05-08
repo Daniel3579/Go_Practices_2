@@ -1,0 +1,11 @@
+services:
+  redis:
+    image: redis:7.4
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+
+# Запуск:
+# cd deploy\redis
+# docker compose up -d
+# docker compose ps
