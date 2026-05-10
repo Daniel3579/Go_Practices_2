@@ -1,18 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"os"
 
+	wamqp "prc-13/worker/core/amqp"
+	"prc-13/worker/core/consumer"
+	"prc-13/worker/core/store"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 )
-
-type TaskEvent struct {
-	Event  string `json:"event"`
-	TaskID string `json:"task_id"`
-	TS     string `json:"ts"`
-}
 
 func main() {
 	rabbitURL := os.Getenv("RABBIT_URL")
@@ -20,43 +17,32 @@ func main() {
 		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
 
-	queueName := os.Getenv("QUEUE_NAME")
-	if queueName == "" {
-		queueName = "task_events"
-	}
-
 	conn, err := amqp.Dial(rabbitURL)
 	if err != nil {
-		log.Fatalf("rabbit connect error: %v", err)
+		log.Fatalf("failed to connect: %v", err)
 	}
 	defer conn.Close()
 
 	ch, err := conn.Channel()
 	if err != nil {
-		log.Fatalf("channel error: %v", err)
+		log.Fatalf("failed to open channel: %v", err)
 	}
 	defer ch.Close()
 
-	_, err = ch.QueueDeclare(
-		queueName,
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
+	// Объявляем очереди
+	if err := wamqp.DeclareQueues(ch); err != nil {
 		log.Fatalf("queue declare error: %v", err)
 	}
 
+	// Prefetch = 1 (одно сообщение за раз)
 	if err := ch.Qos(1, 0, false); err != nil {
 		log.Fatalf("qos error: %v", err)
 	}
 
 	msgs, err := ch.Consume(
-		queueName,
+		wamqp.MainQueue,
 		"",
-		false,
+		false, // auto-ack = false (ручное подтверждение)
 		false,
 		false,
 		false,
@@ -66,20 +52,10 @@ func main() {
 		log.Fatalf("consume error: %v", err)
 	}
 
-	log.Println("worker started, waiting for messages...")
+	processed := store.NewProcessedStore()
+	log.Println("worker started, waiting for jobs...")
 
 	for d := range msgs {
-		var ev TaskEvent
-		if err := json.Unmarshal(d.Body, &ev); err != nil {
-			log.Printf("bad message: %v", err)
-			_ = d.Nack(false, false)
-			continue
-		}
-
-		log.Printf("received event=%s task_id=%s ts=%s", ev.Event, ev.TaskID, ev.TS)
-
-		if err := d.Ack(false); err != nil {
-			log.Printf("ack error: %v", err)
-		}
+		consumer.ProcessMessage(d, processed, ch)
 	}
 }

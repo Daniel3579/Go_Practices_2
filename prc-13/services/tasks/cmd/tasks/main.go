@@ -59,6 +59,11 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/tasks", taskHandler.CreateTask)
 
+	// Внутри main() после создания publisher и taskHandler:
+	jobHandler := network.NewJobHandler(publisher, "task_jobs") // имя очереди
+
+	mux.HandleFunc("POST /v1/jobs/process-task", jobHandler.ProcessTask)
+
 	// Запускаем сервер
 	port := os.Getenv("PORT")
 	if port == "" {

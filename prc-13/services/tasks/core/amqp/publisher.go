@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"prc-13/services/tasks/core/jobs"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -60,4 +61,24 @@ func (p *Publisher) PublishTaskCreated(taskID string) {
 		return
 	}
 	log.Printf("event published: task_id=%s", taskID)
+}
+
+// Добавьте в существующий файл (рядом с PublishTaskCreated)
+func (p *Publisher) PublishJob(queueName string, job *jobs.TaskJob) error {
+	body, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+	return p.channel.PublishWithContext(
+		context.Background(),
+		"",
+		queueName,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType:  "application/json",
+			DeliveryMode: amqp.Persistent,
+			Body:         body,
+		},
+	)
 }
