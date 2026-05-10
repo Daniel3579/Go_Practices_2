@@ -8,8 +8,8 @@ type Task struct {
 }
 
 var Tasks = []*Task{
-	{ID: "t_001", Title: "Первая задача", Description: strPtr("Учебный пример"), Done: false},
-	{ID: "t_002", Title: "Вторая задача", Description: strPtr("GraphQL API"), Done: true},
+	{ID: "t_001", Title: "Изучить REST", Description: strPtr("Прочитать про REST API"), Done: false},
+	{ID: "t_002", Title: "Изучить GraphQL", Description: strPtr("Разобраться со схемами"), Done: true},
 }
 
 func strPtr(s string) *string {
