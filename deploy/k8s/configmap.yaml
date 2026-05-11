@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tasks-config
+data:
+  TASK_PORT: ":8088"
+  AUTH_SERVER: "host.docker.internal:8080"
+  DATABASE_URL: "postgresql://postgres:********@host.docker.internal:5433/prc2_separate_1?sslmode=disable"
+  TASK_CERT_FILE: "certs/server.crt"
+  TASK_KEY_FILE: "certs/server.key"
+  CA_CERT_FILE: "certs/ca.crt"

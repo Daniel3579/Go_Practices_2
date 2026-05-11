@@ -1,216 +1,78 @@
 # Коляда Даниил
-## Практическая работа №15
+## Практическая работа №16
 
 ### Цель работы
 
-Освоить публикацию backend-приложения на удалённом Linux-сервере, научиться подключаться к VPS по SSH, размещать исполняемый файл приложения, настраивать переменные окружения, создавать unit-файл systemd, управлять сервисом через systemctl, анализировать логи через journalctl и выполнять базовую процедуру обновления версии приложения
+Освоить базовую публикацию контейнеризированного backend-приложения в Kubernetes, научиться описывать Deployment и Service, передавать конфигурацию через ConfigMap, настраивать readiness и liveness probes, применять манифесты через kubectl и проверять состояние Pod и Service
 
 ---
 
 ### Шаги
-
-Подключение к VPS по SSH  
-С локального компьютера выполнили подключение
-
-```
-ssh daniel@192.168.31.210
-```
-
-После успешного подключения попали в терминал удалённой машины
-![Screenshot](./screenshots/Screenshot_1.png)
-
----
-
-Обновили пакеты на сервере
-```
-sudo apt update && sudo apt upgrade -y
-```
-![Screenshot](./screenshots/Screenshot_2.png)
-
----
-
-Создали отдельного пользователя для сервиса  
-Создали системного пользователя, от имени которого будет запускаться приложение
-
-Такой пользователь нужен только для запуска сервиса
-```
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin tasksuser
-```
-
-Назначение параметров:
-- `--system` — системный пользователь
-- `--no-create-home` — без домашней директории
-- `--shell /usr/sbin/nologin` — запрет интерактивного входа
-
----
-
-Создали директорию приложения  
-Создали каталог для бинарника и служебных файлов приложения
-
-Директория /opt/tasks будет использоваться как место размещения приложения.
-```
-sudo mkdir -p /opt/tasks
-sudo chown -R tasksuser:tasksuser /opt/tasks
-```
-
----
-
-Подготовили конфигурационный файл  
-Создали отдельную директорию для конфигурации
-```
-sudo mkdir -p /etc/tasks
-```
-
-Создали env-файл
-```
-sudo nano /etc/tasks/.env
-```
-![Screenshot](./screenshots/Screenshot_3.png)
-
----
-
-После сохранения задали безопасные права
-
-Это означает, что читать и изменять файл сможет только root
-```
-sudo chown root:root /etc/tasks/.env
-sudo chmod 600 /etc/tasks/.env
-```
-
----
-
-Собрали Linux-бинарник на локальной машине  
-На локальном компьютере перешли в папку сервиса tasks и выполните сборку под Linux
-```
-GOOS=linux GOARCH=amd64 go build -o bin/tasks ./cmd/tasks
-```
-
-После этого появился исполняемый файл `bin/tasks`
-
----
-
-Скопировали бинарник на VPS  
-С локального компьютера передали файл на сервер
-```
-scp bin/tasks daniel@192.168.31.210:/tmp/tasks
-```
-
-После этого на VPS бинарник будет лежать во временной директории /tmp/tasks
-
----
-
-Переместили бинарник в рабочую директорию  
-На VPS выполнили
-
-Теперь бинарник размещён в целевой директории и готов к запуску
-```
-sudo mv /tmp/tasks /opt/tasks/tasks
-sudo chown tasksuser:tasksuser /opt/tasks/tasks
-sudo chmod 755 /opt/tasks/tasks
-```
-
----
-
-Создали unit-файл systemd  
-Создайте файл службы
-```
-sudo nano /etc/systemd/system/tasks.service
-```
-![Screenshot](./screenshots/Screenshot_4.png)
-
----
-
-Разобрали назначение параметров unit-файла  
-Основные параметры:
-- `Description` — краткое описание службы;
-- `After=network.target` — запускать сервис после инициализации сети;
-- `User=tasksuser` — запуск не от root, а от отдельного пользователя;
-- `WorkingDirectory=/opt/tasks` — рабочая директория приложения;
-- `EnvironmentFile=/etc/tasks/.env` — подключение внешнего файла конфигурации;
-- `ExecStart=/opt/tasks/tasks` — команда запуска приложения;
-- `Restart=always` — всегда перезапускать сервис при аварийном завершении;
-- `RestartSec=2` — подождать 2 секунды перед повторным запуском;
-- `NoNewPrivileges=true` — ограничить получение дополнительных привилегий процессом;
-- `LimitNOFILE=65535` — увеличить лимит открытых файлов;
-- `WantedBy=multi-user.target` — включить службу в обычный многопользовательский режим запуска системы.
-
----
-
-Перечитали конфигурацию systemd  
-После создания unit-файла необходимо сообщить systemd, что появилась новая служба
-```
-sudo systemctl daemon-reload
-```
-
----
-
-Запустили сервис  
-Выполнили запуск
-```
-sudo systemctl start tasks
-```
-
----
-
-Включили автозапуск  
-Чтобы сервис автоматически стартовал после перезагрузки VPS, выполнили
-```
-sudo systemctl enable tasks
-```
-
----
-
-Проверили статус сервиса  
-Посмотрели текущее состояние
-```
-sudo systemctl status tasks
-```
-В статусе видно, что служба активна и запущена
-![Screenshot](./screenshots/Screenshot_5.png)
-
----
-
-Посмотрели логи через journalctl  
-Вывели последние записи журнала
-```
-sudo journalctl -u tasks --no-pager -n 100
-```
-![Screenshot](./screenshots/Screenshot_6.png)
-
----
-
-Проверили доступность приложения  
-Выполните проверку на локальной машине
-![Screenshot](./screenshots/Screenshot_7.png)
-
----
-
-Выполнили обновление версии приложения  
-Минимальная процедура обновления:
-1. На локальной машине собрали новый бинарник
-2. Скопировали его на VPS
-3. Остановили текущий сервис
-4. Сохранили старую версию
-5. Заменили бинарник
-6. Запустили сервис снова
-
-```
-sudo systemctl stop tasks
-sudo mv /opt/tasks/tasks /opt/tasks/tasks.old
-sudo mv /tmp/tasks /opt/tasks/tasks
-sudo chown tasksuser:tasksuser /opt/tasks/tasks
-sudo chmod 755 /opt/tasks/tasks
-sudo systemctl start tasks
-```
-
-![Screenshot](./screenshots/Screenshot_8.png)
 ![Screenshot](./screenshots/Screenshot_9.png)
+
+Шаг 1. Проверить доступ к кластеру
+Убедитесь, что kubectl подключён к нужному кластеру:
+kubectl cluster-info
+kubectl get nodes
+Если команды отрабатывают успешно и показывают информацию о кластере, доступ настроен корректно.
+
+Шаг 6. Применить ConfigMap
+kubectl apply -f deploy/k8s/configmap.yaml
+Шаг 7. Применить Deployment
+kubectl apply -f deploy/k8s/deployment.yaml
+Шаг 8. Применить Service
+kubectl apply -f deploy/k8s/service.yaml
+Именно такая последовательность применения манифестов указана в исходном материале.
+Шаг 9. Проверить Pod
+Проверьте, что Pod создан и находится в рабочем состоянии:
+kubectl get pods
+Если нужно более подробное описание:
+kubectl describe pod <pod-name>
+Эти команды обязательны для проверки состояния после применения манифестов.
+Шаг 10. Проверить Deployment
+kubectl get deployment
+kubectl describe deployment tasks
+Здесь можно убедиться, что Deployment действительно поддерживает нужное число реплик и не фиксирует ошибок запуска.
+Шаг 11. Проверить Service
+kubectl get svc
+kubectl describe svc tasks
+Это позволяет убедиться, что Service создан и связан с нужными Pod.
+Шаг 12. Посмотреть логи контейнера
+Чтобы убедиться, что приложение стартовало без ошибок, выведите логи Pod:
+kubectl logs <pod-name>
+Если Pod был перезапущен, это тоже полезно видно по логам и по описанию Pod.
+Шаг 13. Проверить доступ через port-forward
+Для демонстрации работы сервиса извне выполните:
+kubectl port-forward svc/tasks 8082:8082
+После этого в другом терминале проверьте endpoint:
+curl -i http://localhost:8082/health
+Это рекомендуемый способ демонстрации доступа к опубликованному сервису в рамках ПЗ 16.
+Шаг 14. Проверить реакцию readiness и liveness
+После запуска сервиса важно убедиться, что probes не приводят к аварийному перезапуску контейнера и что Pod переходит в состояние готовности.
+Проверьте:
+kubectl get pods
+kubectl describe pod <pod-name>
+В описании Pod можно увидеть информацию о probes, перезапусках и событиях.
+Шаг 15. Выполнить минимальное масштабирование
+В качестве дополнительной демонстрации можно увеличить число экземпляров приложения:
+kubectl scale deployment tasks --replicas=2
+kubectl get pods
+После выполнения команды должно быть видно уже два Pod для одного Deployment. Возможность показать минимальное масштабирование прямо предусмотрена материалом ПЗ 16.
+Шаг 16. Вернуть одну реплику
+После проверки масштабирования можно вернуть исходное состояние:
+kubectl scale deployment tasks --replicas=1
+
+Шаг 17. Удалить ресурсы после завершения работы
+Если необходимо освободить стенд после демонстрации:
+kubectl delete -f deploy/k8s/service.yaml
+kubectl delete -f deploy/k8s/deployment.yaml
+kubectl delete -f deploy/k8s/configmap.yaml
 
 ---
 
 ### Выводы
 
-Освоили публикацию backend-приложения на удалённом Linux-сервере, научились подключаться к VPS по SSH, размещать исполняемый файл приложения, настраивать переменные окружения, создавать unit-файл systemd, управлять сервисом через systemctl, анализировать логи через journalctl и выполнять базовую процедуру обновления версии приложения
+Освоили базовую публикацию контейнеризированного backend-приложения в Kubernetes, научились описывать Deployment и Service, передавать конфигурацию через ConfigMap, настраивать readiness и liveness probes, применять манифесты через kubectl и проверять состояние Pod и Service
 
 ---
 
