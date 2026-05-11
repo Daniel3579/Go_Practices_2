@@ -1,165 +1,250 @@
 # Коляда Даниил
-## Практическая работа №8
+## Практическая работа №15
 
 ### Цель работы
 
-Освоить основы CI/CD для backend-проекта на Go, научиться настраивать автоматический pipeline для проверки, сборки, упаковки Docker-образа и подготовки приложения к доставке
+Освоить публикацию backend-приложения на удалённом Linux-сервере, научиться подключаться к VPS по SSH, размещать исполняемый файл приложения, настраивать переменные окружения, создавать unit-файл systemd, управлять сервисом через systemctl, анализировать логи через journalctl и выполнять базовую процедуру обновления версии приложения
 
 ---
 
-### Описание
+### Шаги
 
-CI – это Continuous Integration, то есть непрерывная интеграция<br>
-Смысл в том, что после каждого изменения кода система автоматически проверяет проект:
-- устанавливает зависомости
-- запускает тесты
-- выполняет сборку
-- проверяет, что код не сломал проект
+Подключение к VPS по SSH  
+С локального компьютера выполнили подключение
 
-CD – это Continuous Deployment, то есть непрерывное развертывание<br>
-Отвечает за упаковку и доставку результата – например, публикацию Docker-образа и деплой на сервер
+```
+ssh daniel@192.168.31.210
+```
 
----
-
-### Структура pipeline
-
-- [main.yml](.github/workflows/main.yml)
-    - [test-and-build.yml](.github/workflows/test-and-build.yml)
-    - [build-and-push-docker.yml](.github/workflows/build-and-push-docker.yml)
-
----
-
-### Создали токен
-
+После успешного подключения попали в терминал удалённой машины
 ![Screenshot](./screenshots/Screenshot_1.png)
-![Screenshot](./screenshots/Screenshot_4.png)
 
 ---
 
-### Cоздали секрет
-
+Обновили пакеты на сервере
+```
+sudo apt update && sudo apt upgrade -y
+```
 ![Screenshot](./screenshots/Screenshot_2.png)
 
 ---
 
-### Успешная сборка
+Создали отдельного пользователя для сервиса  
+Создали системного пользователя, от имени которого будет запускаться приложение
 
+Такой пользователь нужен только для запуска сервиса
+```
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin tasksuser
+```
+
+Назначение параметров:
+- `--system` — системный пользователь
+- `--no-create-home` — без домашней директории
+- `--shell /usr/sbin/nologin` — запрет интерактивного входа
+
+---
+
+Создали директорию приложения  
+Создали каталог для бинарника и служебных файлов приложения
+
+Директория /opt/tasks будет использоваться как место размещения приложения.
+```
+sudo mkdir -p /opt/tasks
+sudo chown -R tasksuser:tasksuser /opt/tasks
+```
+
+---
+
+Подготовили конфигурационный файл  
+Создали отдельную директорию для конфигурации
+```
+sudo mkdir -p /etc/tasks
+```
+
+Создали env-файл
+```
+sudo nano /etc/tasks/.env
+```
 ![Screenshot](./screenshots/Screenshot_3.png)
 
 ---
 
-### Образы опубликованы в registry
+После сохранения задали безопасные права
 
+Это означает, что читать и изменять файл сможет только root
+```
+sudo chown root:root /etc/tasks/.env
+sudo chmod 600 /etc/tasks/.env
+```
+
+---
+
+Собрали Linux-бинарник на локальной машине  
+На локальном компьютере перешли в папку сервиса tasks и выполните сборку под Linux
+```
+GOOS=linux GOARCH=amd64 go build -o bin/tasks ./cmd/tasks
+```
+
+После этого появился исполняемый файл `bin/tasks`
+
+---
+
+Скопировали бинарник на VPS  
+С локального компьютера передали файл на сервер
+```
+scp bin/tasks daniel@192.168.31.210:/tmp/tasks
+```
+
+После этого на VPS бинарник будет лежать во временной директории /tmp/tasks
+
+---
+
+Переместили бинарник в рабочую директорию  
+На VPS выполнили
+
+Теперь бинарник размещён в целевой директории и готов к запуску
+```
+sudo mv /tmp/tasks /opt/tasks/tasks
+sudo chown tasksuser:tasksuser /opt/tasks/tasks
+sudo chmod 755 /opt/tasks/tasks
+```
+
+---
+
+Создали unit-файл systemd  
+Создайте файл службы
+```
+sudo nano /etc/systemd/system/tasks.service
+```
+![Screenshot](./screenshots/Screenshot_4.png)
+
+---
+
+Разобрали назначение параметров unit-файла  
+Основные параметры:
+- `Description` — краткое описание службы;
+- `After=network.target` — запускать сервис после инициализации сети;
+- `User=tasksuser` — запуск не от root, а от отдельного пользователя;
+- `WorkingDirectory=/opt/tasks` — рабочая директория приложения;
+- `EnvironmentFile=/etc/tasks/.env` — подключение внешнего файла конфигурации;
+- `ExecStart=/opt/tasks/tasks` — команда запуска приложения;
+- `Restart=always` — всегда перезапускать сервис при аварийном завершении;
+- `RestartSec=2` — подождать 2 секунды перед повторным запуском;
+- `NoNewPrivileges=true` — ограничить получение дополнительных привилегий процессом;
+- `LimitNOFILE=65535` — увеличить лимит открытых файлов;
+- `WantedBy=multi-user.target` — включить службу в обычный многопользовательский режим запуска системы.
+
+---
+
+Перечитали конфигурацию systemd  
+После создания unit-файла необходимо сообщить systemd, что появилась новая служба
+```
+sudo systemctl daemon-reload
+```
+
+---
+
+Запустили сервис  
+Выполнили запуск
+```
+sudo systemctl start tasks
+```
+
+---
+
+Включили автозапуск  
+Чтобы сервис автоматически стартовал после перезагрузки VPS, выполнили
+```
+sudo systemctl enable tasks
+```
+
+---
+
+Проверили статус сервиса  
+Посмотрели текущее состояние
+```
+sudo systemctl status tasks
+```
+В статусе видно, что служба активна и запущена
 ![Screenshot](./screenshots/Screenshot_5.png)
+
+---
+
+Посмотрели логи через journalctl  
+Вывели последние записи журнала
+```
+sudo journalctl -u tasks --no-pager -n 100
+```
+![Screenshot](./screenshots/Screenshot_6.png)
+
+---
+
+Проверили доступность приложения  
+Выполните проверку на локальной машине
+![Screenshot](./screenshots/Screenshot_7.png)
+
+---
+
+Выполнили обновление версии приложения  
+Минимальная процедура обновления:
+1. На локальной машине собрали новый бинарник
+2. Скопировали его на VPS
+3. Остановили текущий сервис
+4. Сохранили старую версию
+5. Заменили бинарник
+6. Запустили сервис снова
+
+```
+sudo systemctl stop tasks
+sudo mv /opt/tasks/tasks /opt/tasks/tasks.old
+sudo mv /tmp/tasks /opt/tasks/tasks
+sudo chown tasksuser:tasksuser /opt/tasks/tasks
+sudo chmod 755 /opt/tasks/tasks
+sudo systemctl start tasks
+```
+
+![Screenshot](./screenshots/Screenshot_8.png)
+![Screenshot](./screenshots/Screenshot_9.png)
 
 ---
 
 ### Выводы
 
-Освоили основы CI/CD для backend-проекта на Go, научились настраивать автоматический pipeline для проверки, сборки, упаковки Docker-образа и подготовки приложения к доставке
+Освоили публикацию backend-приложения на удалённом Linux-сервере, научились подключаться к VPS по SSH, размещать исполняемый файл приложения, настраивать переменные окружения, создавать unit-файл systemd, управлять сервисом через systemctl, анализировать логи через journalctl и выполнять базовую процедуру обновления версии приложения
 
 ---
 
 ### Дерево проекта
 
 ```
-├── .github
-│   └── workflows
-│       ├── build-and-push-docker.yml
-│       ├── main.yml
-│       └── test-and-build.yml
-├── .vscode
-│   └── launch.json
+├── Dockerfile
 ├── auth
-│   ├── certs
-│   │   ├── ca.crt
-│   │   ├── server.crt
-│   │   └── server.key.ex
-│   ├── cmd
-│   │   └── main.go
-│   ├── db
-│   │   └── db.go
-│   ├── handlers
-│   │   └── handlers.go
-│   ├── middleware
-│   │   └── middleware.go
-│   ├── monitoring
-│   │   └── prometheus.yml
-│   ├── utils
-│   │   ├── env.go
-│   │   ├── password.go
-│   │   ├── token.go
-│   │   └── utils_test.go
-│   ├── .dockerignore
-│   ├── .env.ex
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── go.mod
-│   └── go.sum
-├── auth-sdk
-│   ├── gen
-│   │   ├── auth_requests.pb.go
-│   │   ├── auth_responses.pb.go
-│   │   ├── auth_service.pb.go
-│   │   └── auth_service_grpc.pb.go
-│   ├── proto
-│   │   ├── auth_requests.proto
-│   │   ├── auth_responses.proto
-│   │   └── auth_service.proto
-│   ├── go.mod
-│   └── go.sum
-├── postgres
-│   ├── data
-│   │   └── ...
-│   ├── .dockerignore
-│   ├── .env.ex
-│   ├── Dockerfile
-│   └── init.sql
-├── screenshots
-│   └── ...
-├── task
-│   ├── auth
-│   │   └── auth.go
-│   ├── certs
-│   │   ├── ca.crt
-│   │   ├── server.crt
-│   │   └── server.key.ex
-│   ├── cmd
-│   │   └── main.go
-│   ├── db
-│   │   └── db.go
-│   ├── dtos
-│   │   ├── requests.go
-│   │   └── responses.go
-│   ├── handlers
-│   │   └── handlers.go
-│   ├── logger
-│   │   └── logger.go
-│   ├── middleware
-│   │   └── middleware.go
-│   ├── utils
-│   │   ├── utils.go
-│   │   └── utils_test.go
-│   ├── .dockerignore
-│   ├── .env.ex
-│   ├── Dockerfile
-│   ├── go.mod
-│   └── go.sum
-├── task-sdk
-│   ├── gen
-│   │   ├── task_requests.pb.go
-│   │   ├── task_responses.pb.go
-│   │   ├── task_service.pb.go
-│   │   └── task_service_grpc.pb.go
-│   ├── proto
-│   │   ├── task_requests.proto
-│   │   ├── task_responses.proto
-│   │   └── task_service.proto
-│   ├── go.mod
-│   └── go.sum
-├── .gitignore
-├── README.md
-└── docker-compose.yml
+│   └── auth.go
+├── bin
+│   └── tasks
+├── certs
+│   ├── ca.crt
+│   ├── server.crt
+│   ├── server.key
+│   └── server.key.ex
+├── cmd
+│   └── main.go
+├── db
+│   └── db.go
+├── dtos
+│   ├── requests.go
+│   └── responses.go
+├── go.mod
+├── go.sum
+├── handlers
+│   └── handlers.go
+├── logger
+│   └── logger.go
+├── middleware
+│   └── middleware.go
+└── utils
+    ├── utils.go
+    └── utils_test.go
 
-31 directories, 70 files
+11 directories, 18 files
 ```

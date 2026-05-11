@@ -1,11 +1,11 @@
 package main
 
 import (
+	"context"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"task/db"
 	"task/handlers"
 	"task/logger"
 	mid "task/middleware"
@@ -13,12 +13,86 @@ import (
 
 	taskpb "github.com/Daniel3579/Go_Practices_2/task-sdk/gen"
 
+	"encoding/json"
+	"log"
+	"net/http"
+	"time"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
+// HealthResponse структура ответа health-эндпоинта
+type HealthResponse struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+	// Можно добавить поле Details map[string]string для проверок зависимостей
+}
+
+// healthHandler обрабатывает GET /health
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	// Здесь можно выполнить реальные проверки:
+	// - соединение с БД
+	// - доступность кеша
+	// - место на диске и т.д.
+	// Если хотя бы одна проверка не пройдена, вернуть HTTP 503.
+
+	// Пример всегда успешного ответа
+	resp := HealthResponse{
+		Status:    "ok",
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
+func health() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", healthHandler)
+
+	// Дополнительно можно добавить простой эндпоинт для проверки готовности (readiness)
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		// Логика проверки готовности (например, загружены ли данные)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ready"))
+	})
+
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+
+	// Запуск сервера в горутине
+	go func() {
+		log.Printf("Starting server on port %s", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	// Graceful shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatalf("server forced to shutdown: %v", err)
+	}
+	log.Println("Server exited gracefully")
+}
+
 func main() {
+	go health()
+
 	// init logger
 	if err := logger.Init(true); err != nil {
 		panic(err)
@@ -35,12 +109,12 @@ func main() {
 
 	// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
-	err = db.ConnectDB("DATABASE_URL")
-	if err != nil {
-		logger.Log.Fatal("connect db", zap.Error(err))
-	}
-	defer db.CloseDB()
-	logger.Log.Info("Database connection established")
+	// err = db.ConnectDB("DATABASE_URL")
+	// if err != nil {
+	// 	logger.Log.Fatal("connect db", zap.Error(err))
+	// }
+	// defer db.CloseDB()
+	// logger.Log.Info("Database connection established")
 
 	// ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 

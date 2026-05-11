@@ -15,7 +15,7 @@ import (
 )
 
 func LoadEnv() error {
-	err := godotenv.Load()
+	err := godotenv.Load("/etc/tasks/.env")
 	if err != nil {
 		return fmt.Errorf("Ошибка загрузки файла .env: %w", err)
 	}
